@@ -37,6 +37,7 @@ end-of-shader
 
 (define-type world (tile-vector unprintable:) vertex-vector key-state drawform)
 (define tile-size 16.)
+
 (define (make-world/init)
   (make-world
    (let* ((number-of-rows 47)
@@ -49,7 +50,7 @@ end-of-shader
      rows)
    '#f32()
    '0 'up))
-
+#;
 (define (insert-section-bmp x y width height section world)
   (world-vertex-vector-set! world 
                             (f32vector-append (world-vertex-vector world) 
@@ -57,6 +58,15 @@ end-of-shader
                                           x (+ y height) (+ 0.1 (* 0.25 section)) 1.0
                                           (+ x width) (+ y height) (+ 0.25  (* 0.25 section)) 1.0
                                           (+ x width) y (+ 0.25  (* 0.25 section)) 0.0 ))))
+
+(define (insert-section-bmp x y width height section world)
+  (world-vertex-vector-set! world 
+                            (f32vector-append (world-vertex-vector world) 
+                                    (f32vector x y (* 0.0625 section) 0.1875
+                                          x (+ y height) (* 0.0625 section) 0.25
+                                          (+ x width) (+ y height) (+ (* 0.0625 section) 0.0625) 0.25
+                                          (+ x width) y (+ 0.25  (* 0.0625 section)) 0.1875))))
+
 (define (set-column-vector world column type)
   (let recur ((counter 0))
     (cond
@@ -71,7 +81,7 @@ end-of-shader
      ((and (eq? counter1 46) (eq? counter2 79))
       (insert-section-bmp (* (exact->inexact counter2) size) (* (exact->inexact counter1) size)  size size 2. world))
      ((eq? (vector-ref (vector-ref vec counter1) counter2) 'ground)
-      (insert-section-bmp (* (exact->inexact counter2) size) (* (exact->inexact counter1) size)  size size 2. world)
+      (insert-section-bmp (* (exact->inexact counter2) size) (* (exact->inexact counter1) size)  size size 1. world)
       (if (eq? counter2 79) 
           (recur (+ counter1 1) 0)
           (recur counter1 (+ counter2 1))))
@@ -178,7 +188,7 @@ end-of-shader
             (ctx (SDL_GL_CreateContext win)))
         (SDL_Log (string-append "SDL screen size: " (object->string screen-width) " x " (object->string screen-height)))
         ;; OpenGL
-        (SDL_Log (string-append "OpenGL Version: " (unsigned-char*->string (glGetString GL_VERSION))))
+        (SDL_Log (string-append "OpenGL Version: " (*->string (glGetString GL_VERSION))))
         (SDL_Log "Using API OpenGL Version: 2.1 - GL Shading Language Version: 1.2")
         ;; Glew: initialize extensions
         (glewInit)
@@ -204,7 +214,8 @@ end-of-shader
                (shaders (list (fusion:create-shader GL_VERTEX_SHADER vertex-shader)
                               (fusion:create-shader GL_FRAGMENT_SHADER fragment-shader)))
                (shader-program (fusion:create-program shaders))
-               (texture-image* (SDL_LoadBMP "assets/128x32.bmp")))
+               (texture-image* (or (IMG_Load "assets/PlantillaPF1.png")
+                                   (fusion:error (string-append "Unable to load texture image -- " (IMG_GetError))))))
           ;; Clean up shaders once the program has been compiled and linked
           (for-each glDeleteShader shaders)
 
@@ -265,7 +276,7 @@ end-of-shader
             (glBindVertexArray 0)
             (map-updater vertex-data world)
             ;; Game loop
-            (let ((event* (alloc-SDL_Event 1)))
+            (let ((event* (alloc-SDL_Event)))
               (call/cc
                (lambda (quit)
                  (let main-loop ()
@@ -399,7 +410,6 @@ end-of-shader
                    
                    (SDL_GL_SwapWindow win)
                    (main-loop))))
-              (free event*)
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
